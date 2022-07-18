@@ -1,3 +1,4 @@
+#constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
 
 #adding a genesis block, the very first block that is a part of each chain
@@ -16,12 +17,22 @@ participants = {'Caolan'}
 def hash_block(block):
     '-'.join([str(block[key]) for key in block])
 
+def verify_transaction(transaction):
+    sender_balance = get_balance(transaction['sender'])
+    if sender_balance >= transaction['amount']:
+        return True
+    else:
+        return False
+    #return sender_balance >= transaction['amount'] because it will return a boolean anyway
+
 def get_balance(participant):
     #nested list comprehension to go through every block in the blockchain
     #get amount for a given transcation, for all transactions in the block
     #  if the sender is the same as the participant. Since the transactions are part of the block
     # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
     tx_sender = [[tx['amount'] for tx in block['transactions']if tx['sender'] == participant] for block in blockchain]
+    open_tx_sender = [tx['amount'] for tx in open_transactions if tx['sender'] == participant]
+    tx_sender.append(open_tx_sender)
     #loop to go through transactions in tx_sender and sum them into a new value (amount_sent)
     amount_sent = 0
     for tx in tx_sender:
@@ -59,21 +70,26 @@ def add_value(receiver, sender=owner, amount=1.0):
     'receiver': receiver, 
     'amount': amount
     }
-    open_transactions.append(transaction)
-    #adding the senders and recipients
-    participants.add(sender)
-    participants.add(receiver)
+    if verify_transaction(transaction):
+        open_transactions.append(transaction)
+        #adding the senders and recipients
+        participants.add(sender)
+        participants.add(receiver)
+        return True
+    return False
     
 
 #function to mine a new block and append it to the blockchain
 def mine_block():
     last_block = blockchain[-1]
     hashed_block = hash_block(last_block)
+    #when the block is mined, the user will be rewarded by receiving coins
     reward_transaction = {
         'sender': 'MINING',
         'receiver': owner,
         'amount': MINING_REWARD
     }
+    #appending the reward transaction to the open_transactions list
     open_transactions.append(reward_transaction)
     block = {
         'previous_hash': hashed_block,
@@ -139,7 +155,10 @@ while awaiting_input:
         #tuple unpacking - assigning individual elements of the tuple to a variable*
         recipient, amount = tx_data
         #adding the transaction amount to the blockchain
-        add_value(recipient, amount=amount)
+        if add_value(recipient, amount=amount):
+            print('Added transaction')
+        else:
+            print('Transaction failed')
         print(open_transactions)
     elif user_choice == '2':
         #when user mines a new block, reset open transactions to an empty list 
