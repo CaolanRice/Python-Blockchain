@@ -7,11 +7,33 @@ genesis_block = {
 blockchain = [genesis_block]
 open_transactions = []
 owner = 'Caolan'
+#set of participants
 participants = {'Caolan'}
 
 
 def hash_block(block):
     '-'.join([str(block[key]) for key in block])
+
+def get_balance(participant):
+    #nested list comprehension to go through every block in the blockchain
+    #get amount for a given transcation, for all transactions in the block
+    #  if the sender is the same as the participant. Since the transactions are part of the block
+    # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
+    tx_sender = [[tx['amount'] for tx in block['transactions']if tx['sender'] == participant] for block in blockchain]
+    #loop to go through transactions in tx_sender and sum them into a new value (amount_sent)
+    amount_sent = 0
+    for tx in tx_sender:
+        #required because otherwise it will try to access element 0 in the array which has no value (genesis block)
+        if len(tx) > 0:
+            amount_sent += tx[0]
+    tx_receiver = [[tx['amount'] for tx in block['transactions']if tx['receiver'] == participant] for block in blockchain]
+    amount_received = 0
+    for tx in tx_receiver:
+        #required because otherwise it will try to access element 0 in the array which has no value (genesis block)
+        if len(tx) > 0:
+            amount_received += tx[0]
+    #tuple to subtract the amount sent from the amount received, returning our balance. 
+    return amount_received - amount_sent
 
 
 def get_last_value():
@@ -36,6 +58,7 @@ def add_value(receiver, sender=owner, amount=1.0):
     'amount': amount
     }
     open_transactions.append(transaction)
+    #adding the senders and recipients
     participants.add(sender)
     participants.add(receiver)
     
@@ -43,8 +66,6 @@ def add_value(receiver, sender=owner, amount=1.0):
 #function to mine a new block and append it to the blockchain
 def mine_block():
     last_block = blockchain[-1]
-    #list compression - join takes the list as an argument and joins it with the - character
-    #can only join a list of strings, so we wrap the last_block[key] value with the string function
     hashed_block = hash_block(last_block)
     # for key in last_block:
     #     value = last_block[key]
@@ -55,6 +76,7 @@ def mine_block():
         'transactions': open_transactions
     }
     blockchain.append(block)
+    return True
 
 def get_transaction_value():
     """Returns user input as a float to be added to the chain"""
@@ -109,13 +131,15 @@ while awaiting_input:
     user_choice = get_user_choice()
     if user_choice == '1':
         tx_data = get_transaction_value()
-        #tuple unpacking - assings individual elements of the tuple to a variable*****************************************
+        #tuple unpacking - assigning individual elements of the tuple to a variable*
         recipient, amount = tx_data
         #adding the transaction amount to the blockchain
         add_value(recipient, amount=amount)
         print(open_transactions)
     elif user_choice == '2':
-        mine_block()
+        #when user mines a new block, reset open transactions to an empty list 
+        if mine_block():
+            open_transactions = []
     elif user_choice == '3':
          print_blockchain()
     elif user_choice == '4':
@@ -137,6 +161,7 @@ while awaiting_input:
         print_blockchain()
         print('Invalid blockchain!')
         break
+    print(get_balance('Caolan'))
 else:
     print('User left') 
     
