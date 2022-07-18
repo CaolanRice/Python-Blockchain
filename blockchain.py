@@ -25,6 +25,10 @@ def verify_transaction(transaction):
         return False
     #return sender_balance >= transaction['amount'] because it will return a boolean anyway
 
+
+
+
+
 def get_balance(participant):
     #nested list comprehension to go through every block in the blockchain
     #get amount for a given transcation, for all transactions in the block
@@ -89,12 +93,15 @@ def mine_block():
         'receiver': owner,
         'amount': MINING_REWARD
     }
-    #appending the reward transaction to the open_transactions list
-    open_transactions.append(reward_transaction)
+    #using range selection to copy the open_transactions list
+    #so that we can use this locally
+    #if the mine block ever fails, then our global open_transactions won't be affected
+    copy_transactions = open_transactions[:]
+    copy_transactions.append(reward_transaction)
     block = {
         'previous_hash': hashed_block,
         'index': len(blockchain),
-        'transactions': open_transactions
+        'transactions': copy_transactions
     }
     blockchain.append(block)
     return True
@@ -138,6 +145,17 @@ def verify_blockchain():
             return False
     return True
 
+
+def verify_all_transactions():
+    #using list comprehension and all function to return all TRUE (valid) transactions
+    return all([verify_transaction(tx) for tx in open_transactions]) 
+    # is_valid = True
+    # for tx in open_transactions:
+    #     if verify_all_transactions(tx):
+    #         is_valid = True
+    #     else:
+    #         is_valid = False
+    # return is_valid
     
 awaiting_input = True
 
@@ -146,7 +164,8 @@ while awaiting_input:
     print('1: Make a new transaction')
     print('2: Mine a new block')
     print('3: View current blockchain')
-    print('4: Output Participants')
+    print('4: Output participants')
+    print('5: Check validity of transactions')
     print('m. Modify blockchain')
     print('q. Exit program')
     user_choice = get_user_choice()
@@ -168,6 +187,11 @@ while awaiting_input:
          print_blockchain()
     elif user_choice == '4':
         print(participants)
+    elif user_choice == '5':
+        if verify_all_transactions():
+            print('All transactions verified')
+        else:
+            print('Some transactions are invalid')
     elif user_choice == 'm':
         #validating the blockchain, making sure the values of previous blocks have not been modified
         if len(blockchain) >= 1:
