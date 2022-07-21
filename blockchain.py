@@ -1,3 +1,4 @@
+import functools
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
 
@@ -37,18 +38,9 @@ def get_balance(participant):
     tx_sender = [[tx['amount'] for tx in block['transactions']if tx['sender'] == participant] for block in blockchain]
     open_tx_sender = [tx['amount'] for tx in open_transactions if tx['sender'] == participant]
     tx_sender.append(open_tx_sender)
-    #loop to go through transactions in tx_sender and sum them into a new value (amount_sent)
-    amount_sent = 0
-    for tx in tx_sender:
-        #required because otherwise it will try to access element 0 in the array which has no value (genesis block)
-        if len(tx) > 0:
-            amount_sent += tx[0]
+    amount_sent = functools.reduce(lambda tx_sum, tx_amount: tx_sum + tx_amount[0] if len(tx_amount) > 0 else 0, tx_sender, 0)
     tx_receiver = [[tx['amount'] for tx in block['transactions']if tx['receiver'] == participant] for block in blockchain]
-    amount_received = 0
-    for tx in tx_receiver:
-        #required because otherwise it will try to access element 0 in the array which has no value (genesis block)
-        if len(tx) > 0:
-            amount_received += tx[0]
+    amount_received = functools.reduce(lambda tx_sum, tx_amount: tx_sum + tx_amount[0] if len(tx_amount) > 0 else 0, tx_receiver, 0)
     #tuple to subtract the amount sent from the amount received, returning our balance. 
     return amount_received - amount_sent
 
@@ -209,7 +201,7 @@ while awaiting_input:
         print_blockchain()
         print('Invalid blockchain!')
         break
-    print(get_balance('Caolan'))
+    print('Balance of {}: {:6.2f}'.format('Caolan', get_balance('Caolan')))
 else:
     print('User left') 
     
