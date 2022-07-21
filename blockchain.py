@@ -38,9 +38,9 @@ def get_balance(participant):
     tx_sender = [[tx['amount'] for tx in block['transactions']if tx['sender'] == participant] for block in blockchain]
     open_tx_sender = [tx['amount'] for tx in open_transactions if tx['sender'] == participant]
     tx_sender.append(open_tx_sender)
-    amount_sent = functools.reduce(lambda tx_sum, tx_amount: tx_sum + tx_amount[0] if len(tx_amount) > 0 else 0, tx_sender, 0)
+    amount_sent = functools.reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_sender, 0)
     tx_receiver = [[tx['amount'] for tx in block['transactions']if tx['receiver'] == participant] for block in blockchain]
-    amount_received = functools.reduce(lambda tx_sum, tx_amount: tx_sum + tx_amount[0] if len(tx_amount) > 0 else 0, tx_receiver, 0)
+    amount_received = functools.reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_receiver, 0)
     #tuple to subtract the amount sent from the amount received, returning our balance. 
     return amount_received - amount_sent
 
