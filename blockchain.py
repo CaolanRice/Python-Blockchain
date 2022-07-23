@@ -1,4 +1,6 @@
-import functools
+from functools import reduce
+import hashlib
+import json
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
 
@@ -16,7 +18,10 @@ participants = {'Caolan'}
 
 
 def hash_block(block):
-    '-'.join([str(block[key]) for key in block])
+#    return '-'.join([str(block[key]) for key in block])
+   #using json to return our block dictionary as a string, then making a hash value from the returned string
+   #hexdigest returns the hash as readable characters
+   return hashlib.sha256(json.dumps(block).encode()).hexdigest()
 
 def verify_transaction(transaction):
     sender_balance = get_balance(transaction['sender'])
@@ -38,9 +43,9 @@ def get_balance(participant):
     tx_sender = [[tx['amount'] for tx in block['transactions']if tx['sender'] == participant] for block in blockchain]
     open_tx_sender = [tx['amount'] for tx in open_transactions if tx['sender'] == participant]
     tx_sender.append(open_tx_sender)
-    amount_sent = functools.reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_sender, 0)
+    amount_sent = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_sender, 0)
     tx_receiver = [[tx['amount'] for tx in block['transactions']if tx['receiver'] == participant] for block in blockchain]
-    amount_received = functools.reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_receiver, 0)
+    amount_received = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_receiver, 0)
     #tuple to subtract the amount sent from the amount received, returning our balance. 
     return amount_received - amount_sent
 
@@ -79,6 +84,7 @@ def add_value(receiver, sender=owner, amount=1.0):
 def mine_block():
     last_block = blockchain[-1]
     hashed_block = hash_block(last_block)
+    print(hashed_block)
     #when the block is mined, the user will be rewarded by receiving coins
     reward_transaction = {
         'sender': 'MINING',
