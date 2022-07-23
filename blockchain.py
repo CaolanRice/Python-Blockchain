@@ -1,6 +1,7 @@
 from functools import reduce
 import hashlib
 import json
+from collections import OrderedDict
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
 
@@ -23,7 +24,7 @@ participants = {'Caolan'}
 def hash_block(block):
    #using json to return our block dictionary as a string, then making a hash value from the returned string
    #hexdigest returns the hash as readable characters
-   return hashlib.sha256(json.dumps(block).encode()).hexdigest()
+   return hashlib.sha256(json.dumps(block, sort_keys=True).encode()).hexdigest()
 
 #function that checks wether proof is valid, proof_num must match guess_hash
 #incrementing proof_num leads to an entirely new hash 
@@ -87,11 +88,9 @@ def add_value(receiver, sender=owner, amount=1.0):
         :Amount: amount of coins sent, default is 1
     """
     #dictionary with key value pairs 
-    transaction = {
-    'sender': sender,
-    'receiver': receiver, 
-    'amount': amount
-    }
+    #creating an ordered dictionary which takes a list of tuples
+    transaction = OrderedDict(
+        [('sender', sender), ('receiver', receiver), ('amount', amount)])
     if verify_transaction(transaction):
         open_transactions.append(transaction)
         #adding the senders and recipients
@@ -108,11 +107,9 @@ def mine_block():
     #adding proof of work function
     proof = proof_of_work()
     #when the block is mined, the user will be rewarded by receiving coins
-    reward_transaction = {
-        'sender': 'MINING',
-        'receiver': owner,
-        'amount': MINING_REWARD
-    }
+    #
+    reward_transaction = OrderedDict(
+        [('sender', 'MINING'), ('receiver', owner), ('amount', MINING_REWARD)])
     #using range selection to copy the open_transactions list
     #so that we can use this locally
     #if the mine block ever fails, then our global open_transactions won't be affected
