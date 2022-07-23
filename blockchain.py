@@ -4,11 +4,12 @@ import json
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
 
-#adding a genesis block, the very first block that is a part of each chain
+#adding a genesis block, the very first block that is a part of each chain, has dummy data
 GENESIS_BLOCK = {
         'previous_hash': '',
         'index': 0,
-        'transactions' : []
+        'transactions' : [],
+        'proof': 10
 }
 blockchain = [GENESIS_BLOCK]
 open_transactions = []
@@ -17,11 +18,31 @@ owner = 'Caolan'
 participants = {'Caolan'}
 
 
+    
+
 def hash_block(block):
-#    return '-'.join([str(block[key]) for key in block])
    #using json to return our block dictionary as a string, then making a hash value from the returned string
    #hexdigest returns the hash as readable characters
    return hashlib.sha256(json.dumps(block).encode()).hexdigest()
+
+#function that checks wether proof is valid, proof_num must match guess_hash
+#incrementing proof_num leads to an entirely new hash 
+def valid_proof(transactions, last_hash, proof_num):
+    #any cha
+    guess = (str(transactions) + str(last_hash) + str(proof_num)).encode()
+    guess_hash = hashlib.sha256(guess).hexdigest()
+    print(guess_hash)
+    #checking if guest_hash begins with two 0's
+    return guess_hash[0:2] == '00'
+
+def proof_of_work():
+    last_block = blockchain[-1]
+    last_hash = hash_block(last_block)
+    proof_num = 0
+    #adding open transactions to new block and the hash of the previous block
+    while not valid_proof(open_transactions, last_hash, proof_num):
+        proof_num += 1
+
 
 def verify_transaction(transaction):
     sender_balance = get_balance(transaction['sender'])
@@ -84,7 +105,8 @@ def add_value(receiver, sender=owner, amount=1.0):
 def mine_block():
     last_block = blockchain[-1]
     hashed_block = hash_block(last_block)
-    print(hashed_block)
+    #adding proof of work function
+    proof = proof_of_work()
     #when the block is mined, the user will be rewarded by receiving coins
     reward_transaction = {
         'sender': 'MINING',
@@ -99,7 +121,8 @@ def mine_block():
     block = {
         'previous_hash': hashed_block,
         'index': len(blockchain),
-        'transactions': copy_transactions
+        'transactions': copy_transactions,
+        'proof': proof
     }
     blockchain.append(block)
     return True
@@ -140,6 +163,9 @@ def verify_blockchain():
     #previously stored hash. If the blockchain has been manipulated, it will yield a different result
     #than the hash of the previous block.
         if block['previous_hash'] != hash_block(blockchain[index - 1]):
+            return False
+        if not valid_proof(block['transactions'][:-1], block['previous_hash'], block['proof']):
+            print ('Proof of work is invalid')
             return False
     return True
 
