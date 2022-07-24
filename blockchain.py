@@ -2,6 +2,10 @@ from functools import reduce
 import hashlib
 import json
 from collections import OrderedDict
+
+
+from hash_functions import hash_string_256, hash_block
+
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
 
@@ -12,38 +16,72 @@ GENESIS_BLOCK = {
         'transactions' : [],
         'proof': 10
 }
+
 blockchain = [GENESIS_BLOCK]
 open_transactions = []
 owner = 'Caolan'
 #set of participants
 participants = {'Caolan'}
 
+def load_data():
+    with open('blockchain.txt', mode='r') as file:
+        file_content = file.readlines()
+        global blockchain
+        global open_transactions
+        #using range selection to get the entire line except for \n
+        #takes string in json format and gives back an object
+        blockchain = json.loads(file_content[0][:-1])
+        updated_blockchain = []
+        for block in blockchain:
+            updated_block = {
+                'previous_hash': block['previous_hash'],
+                'index': block['index'],
+                'proof': block['proof'],
+                'transactions': [OrderedDict(
+                    [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
+            }
+            updated_blockchain.append(updated_block)
+        blockchain = updated_blockchain
+        open_transactions = json.loads(file_content[1])
+        updated_transactions = []
+        for tx in open_transactions:
+            updated_transaction = OrderedDict(
+                [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])])
+            updated_transactions.append(updated_transaction)
+        open_transactions = updated_transactions
+            
 
-    
+load_data()
 
-def hash_block(block):
-   #using json to return our block dictionary as a string, then making a hash value from the returned string
-   #hexdigest returns the hash as readable characters
-   return hashlib.sha256(json.dumps(block, sort_keys=True).encode()).hexdigest()
+def save_data():
+    with open('blockchain.txt', mode='w') as file:
+        file.write(json.dumps(blockchain))
+        file.write('\n')
+        file.write(json.dumps(open_transactions))
+        # file.write(str(blockchain))
+        # file.write('\n')
+        # file.write(str(open_transactions))
 
-#function that checks wether proof is valid, proof_num must match guess_hash
-#incrementing proof_num leads to an entirely new hash 
-def valid_proof(transactions, last_hash, proof_num):
+
+#function that checks whether proof is valid, proof must match guess_hash
+#incrementing proof leads to an entirely new hash 
+def valid_proof(transactions, last_hash, proof):
     #any cha
-    guess = (str(transactions) + str(last_hash) + str(proof_num)).encode()
-    guess_hash = hashlib.sha256(guess).hexdigest()
+    guess = (str(transactions) + str(last_hash) + str(proof)).encode()
+    guess_hash = hash_string_256(guess)
     print(guess_hash)
     #checking if guest_hash begins with two 0's
     return guess_hash[0:2] == '00'
 
 def proof_of_work():
+    """Generate a proof of work for the open transactions, the hash of the previous block and a random number (which is guessed until it fits)."""
     last_block = blockchain[-1]
     last_hash = hash_block(last_block)
-    proof_num = 0
-    #adding open transactions to new block and the hash of the previous block
-    while not valid_proof(open_transactions, last_hash, proof_num):
-        proof_num += 1
-
+    proof = 0
+    #tries different proof of work numbers until it finds a valid one
+    while not valid_proof(open_transactions, last_hash, proof):
+        proof += 1
+    return proof
 
 def verify_transaction(transaction):
     sender_balance = get_balance(transaction['sender'])
@@ -52,9 +90,6 @@ def verify_transaction(transaction):
     else:
         return False
     #return sender_balance >= transaction['amount'] because it will return a boolean anyway
-
-
-
 
 
 def get_balance(participant):
@@ -96,6 +131,7 @@ def add_value(receiver, sender=owner, amount=1.0):
         #adding the senders and recipients
         participants.add(sender)
         participants.add(receiver)
+        save_data()
         return True
     return False
     
@@ -204,6 +240,7 @@ while awaiting_input:
         #when user mines a new block, reset open transactions to an empty list 
         if mine_block():
             open_transactions = []
+            save_data()
     elif user_choice == '3':
          print_blockchain()
     elif user_choice == '4':
