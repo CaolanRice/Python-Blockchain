@@ -2,6 +2,7 @@ from functools import reduce
 import hashlib
 import json
 from collections import OrderedDict
+import pickle
 
 
 from hash_functions import hash_string_256, hash_block
@@ -25,9 +26,14 @@ participants = {'Caolan'}
 
 def load_data():
     with open('blockchain.txt', mode='r') as file:
+        # file_content = pickle.loads(file.read())
         file_content = file.readlines()
         global blockchain
         global open_transactions
+        # blockchain = file_content['chain']
+        # open_transactions = file_content['ot']
+
+
         #using range selection to get the entire line except for \n
         #takes string in json format and gives back an object
         blockchain = json.loads(file_content[0][:-1])
@@ -58,10 +64,14 @@ def save_data():
         file.write(json.dumps(blockchain))
         file.write('\n')
         file.write(json.dumps(open_transactions))
-        # file.write(str(blockchain))
-        # file.write('\n')
-        # file.write(str(open_transactions))
-
+        
+        #attempted using pickle library to preserve dictionary output instead of string with json
+        # save_data = {
+        #     'chain': blockchain,
+        #     'ot': open_transactions
+        # }
+        # file.write(pickle.dumps(save_data))
+     
 
 #function that checks whether proof is valid, proof must match guess_hash
 #incrementing proof leads to an entirely new hash 
