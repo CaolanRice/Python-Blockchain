@@ -11,59 +11,82 @@ from hash_functions import hash_string_256, hash_block
 MINING_REWARD = 10
 
 #adding a genesis block, the very first block that is a part of each chain, has dummy data
-GENESIS_BLOCK = {
-        'previous_hash': '',
-        'index': 0,
-        'transactions' : [],
-        'proof': 10
-}
+# GENESIS_BLOCK = {
+#         'previous_hash': '',
+#         'index': 0,
+#         'transactions' : [],
+#         'proof': 10
+# }
 
-blockchain = [GENESIS_BLOCK]
+blockchain = []
 open_transactions = []
 owner = 'Caolan'
 #set of participants
 participants = {'Caolan'}
 
 def load_data():
-    with open('blockchain.txt', mode='r') as file:
-        # file_content = pickle.loads(file.read())
-        file_content = file.readlines()
-        global blockchain
-        global open_transactions
-        # blockchain = file_content['chain']
-        # open_transactions = file_content['ot']
+    global blockchain
+    global open_transactions
+    try:
+        with open('blockchain.txt', mode='r') as file:
+            # file_content = pickle.loads(file.read())
+            file_content = file.readlines()
+            # blockchain = file_content['chain']
+            # open_transactions = file_content['ot']
 
 
-        #using range selection to get the entire line except for \n
-        #takes string in json format and gives back an object
-        blockchain = json.loads(file_content[0][:-1])
-        updated_blockchain = []
-        for block in blockchain:
-            updated_block = {
-                'previous_hash': block['previous_hash'],
-                'index': block['index'],
-                'proof': block['proof'],
-                'transactions': [OrderedDict(
-                    [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
-            }
-            updated_blockchain.append(updated_block)
-        blockchain = updated_blockchain
-        open_transactions = json.loads(file_content[1])
-        updated_transactions = []
-        for tx in open_transactions:
-            updated_transaction = OrderedDict(
-                [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])])
-            updated_transactions.append(updated_transaction)
-        open_transactions = updated_transactions
-            
+            #using range selection to get the entire line except for \n
+            #takes string in json format and gives back an object
+            blockchain = json.loads(file_content[0][:-1])
+            updated_blockchain = []
+            for block in blockchain:
+                updated_block = {
+                    'previous_hash': block['previous_hash'],
+                    'index': block['index'],
+                    'proof': block['proof'],
+                    'transactions': [OrderedDict(
+                        [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
+                }
+                updated_blockchain.append(updated_block)
+            blockchain = updated_blockchain
+            open_transactions = json.loads(file_content[1])
+            updated_transactions = []
+            for tx in open_transactions:
+                updated_transaction = OrderedDict(
+                    [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])])
+                updated_transactions.append(updated_transaction)
+            open_transactions = updated_transactions
+
+   #adding genesis block and initializing our blockchain if an IOError is thrown
+    except IOError:
+        GENESIS_BLOCK = {
+        'previous_hash': '',
+        'index': 0,
+        'transactions' : [],
+        'proof': 10
+        }
+        blockchain = [GENESIS_BLOCK]
+        open_transactions = []
+        owner = 'Caolan'
+        #set of participants
+        participants = {'Caolan'}
+
+    finally:
+        print('Cleanup')
 
 load_data()
 
 def save_data():
-    with open('blockchain.txt', mode='w') as file:
-        file.write(json.dumps(blockchain))
-        file.write('\n')
-        file.write(json.dumps(open_transactions))
+    try:
+        with open('blockchain.txt', mode='w') as file:
+            file.write(json.dumps(blockchain))
+            file.write('\n')
+            file.write(json.dumps(open_transactions))
+
+    except IOError:
+        print('File save has been unsuccessful')
+
+
         
         #attempted using pickle library to preserve dictionary output instead of string with json
         # save_data = {
