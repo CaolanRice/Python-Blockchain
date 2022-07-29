@@ -6,6 +6,7 @@ import pickle
 
 
 from hash_functions import hash_string_256, hash_block
+from block import Block
 
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
@@ -40,13 +41,19 @@ def load_data():
             blockchain = json.loads(file_content[0][:-1])
             updated_blockchain = []
             for block in blockchain:
-                updated_block = {
-                    'previous_hash': block['previous_hash'],
-                    'index': block['index'],
-                    'proof': block['proof'],
-                    'transactions': [OrderedDict(
+                #storing this orderedDict as a variable here to make code more readable for the updated_block variable
+                tx_var = [OrderedDict(
                         [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
-                }
+                #using new block class to create a Block object, will return a list of objects instead of dictionaries 
+                updated_block = Block(block['index'], block['previous_hash'], tx_var, block['proof'], block['timestamp'])
+                #old code for block as dict
+                # updated_block = {
+                #     'previous_hash': block['previous_hash'],
+                #     'index': block['index'],
+                #     'proof': block['proof'],
+                #     'transactions': [OrderedDict(
+                #         [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
+                # }
                 updated_blockchain.append(updated_block)
             blockchain = updated_blockchain
             open_transactions = json.loads(file_content[1])
@@ -59,6 +66,7 @@ def load_data():
 
    #adding genesis block and initializing our blockchain if an IOError is thrown
     except IOError:
+        GENESIS_BLOCK = Block(0, '', [], 10, 0)
         GENESIS_BLOCK = {
         'previous_hash': '',
         'index': 0,
@@ -67,10 +75,9 @@ def load_data():
         }
         blockchain = [GENESIS_BLOCK]
         open_transactions = []
-        owner = 'Caolan'
-        #set of participants
-        participants = {'Caolan'}
-
+        # owner = 'Caolan'
+        # #set of participants
+        # participants = {'Caolan'}
     finally:
         print('Cleanup')
 
@@ -130,11 +137,13 @@ def get_balance(participant):
     #get amount for a given transcation, for all transactions in the block
     #  if the sender is the same as the participant. Since the transactions are part of the block
     # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
-    tx_sender = [[tx['amount'] for tx in block['transactions']if tx['sender'] == participant] for block in blockchain]
+    tx_sender = [[tx['amount'] for tx in block.transactions
+                    if tx['sender'] == participant] for block in blockchain]
     open_tx_sender = [tx['amount'] for tx in open_transactions if tx['sender'] == participant]
     tx_sender.append(open_tx_sender)
     amount_sent = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_sender, 0)
-    tx_receiver = [[tx['amount'] for tx in block['transactions']if tx['receiver'] == participant] for block in blockchain]
+    tx_receiver = [[tx['amount'] for tx in block.transactions
+                    if tx['receiver'] == participant] for block in blockchain]
     amount_received = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_receiver, 0)
     #tuple to subtract the amount sent from the amount received, returning our balance. 
     return amount_received - amount_sent
@@ -184,12 +193,13 @@ def mine_block():
     #if the mine block ever fails, then our global open_transactions won't be affected
     copy_transactions = open_transactions[:]
     copy_transactions.append(reward_transaction)
-    block = {
-        'previous_hash': hashed_block,
-        'index': len(blockchain),
-        'transactions': copy_transactions,
-        'proof': proof
-    }
+    block = Block(len(blockchain), hashed_block, copy_transactions, proof)
+    # block = {
+    #     'previous_hash': hashed_block,
+    #     'index': len(blockchain),
+    #     'transactions': copy_transactions,
+    #     'proof': proof
+    # }
     blockchain.append(block)
     return True
 
@@ -228,9 +238,12 @@ def verify_blockchain():
     #as an argument. This is dynamically recalculating the hash of the last block and comparing it with the
     #previously stored hash. If the blockchain has been manipulated, it will yield a different result
     #than the hash of the previous block.
-        if block['previous_hash'] != hash_block(blockchain[index - 1]):
+        # if block['previous_hash'] != hash_block(blockchain[index - 1]):
+        #previous hash as shown above is an attribute of the block object, 
+        # so must be accessed using block.previous hash as shown below
+        if block.previous_hash != hash_block(blockchain[index - 1]):
             return False
-        if not valid_proof(block['transactions'][:-1], block['previous_hash'], block['proof']):
+        if not valid_proof(block.transactions[:-1], block.previous_hash, block.proof):
             print ('Proof of work is invalid')
             return False
     return True
