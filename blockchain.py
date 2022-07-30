@@ -64,8 +64,8 @@ def load_data():
                 updated_transactions.append(updated_transaction)
             open_transactions = updated_transactions
 
-   #adding genesis block and initializing our blockchain if an IOError is thrown
-    except IOError:
+   #adding genesis block and initializing our blockchain if an IOError or IndexError is thrown
+    except (IOError, IndexError):
         GENESIS_BLOCK = Block(0, '', [], 10, 0)
         GENESIS_BLOCK = {
         'previous_hash': '',
@@ -86,7 +86,8 @@ load_data()
 def save_data():
     try:
         with open('blockchain.txt', mode='w') as file:
-            file.write(json.dumps(blockchain))
+            saved_chain = [block.__dict__ for block in blockchain]
+            file.write(json.dumps(saved_chain))
             file.write('\n')
             file.write(json.dumps(open_transactions))
 
