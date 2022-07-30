@@ -6,6 +6,7 @@ import pickle
 
 
 from hash_functions import hash_string_256, hash_block
+from transaction import Transaction
 from block import Block
 
 #constant, reward that user will receive when they mine a block
@@ -41,11 +42,11 @@ def load_data():
             blockchain = json.loads(file_content[0][:-1])
             updated_blockchain = []
             for block in blockchain:
-                #storing this orderedDict as a variable here to make code more readable for the updated_block variable
-                tx_var = [OrderedDict(
-                        [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
+                converted_tx = [Transaction(tx['sender'], tx['receiver'], tx['amount']) for tx in block['transactions']]
+                # converted_tx = [OrderedDict(
+                #         [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
                 #using new block class to create a Block object, will return a list of objects instead of dictionaries 
-                updated_block = Block(block['index'], block['previous_hash'], tx_var, block['proof'], block['timestamp'])
+                updated_block = Block(block['index'], block['previous_hash'], converted_tx, block['proof'], block['timestamp'])
                 #old code for block as dict
                 # updated_block = {
                 #     'previous_hash': block['previous_hash'],
@@ -59,6 +60,7 @@ def load_data():
             open_transactions = json.loads(file_content[1])
             updated_transactions = []
             for tx in open_transactions:
+                updated_transactions = Transaction(tx['sender'], tx['receiver'], tx['amount'])
                 updated_transaction = OrderedDict(
                     [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])])
                 updated_transactions.append(updated_transaction)
@@ -86,10 +88,14 @@ load_data()
 def save_data():
     try:
         with open('blockchain.txt', mode='w') as file:
-            saved_chain = [block.__dict__ for block in blockchain]
+            #c
+            saved_chain = [block.__dict__ for block in 
+                [Block(block_el.index, block_el.previous_hash, [tx.__dict__ for tx in block_el.transactions], block_el.proof, block_el.timestamp) 
+                for block_el in blockchain]]
             file.write(json.dumps(saved_chain))
             file.write('\n')
-            file.write(json.dumps(open_transactions))
+            saved_tx = [tx.__dict__ for tx in open_transactions]
+            file.write(json.dumps(saved_tx))
 
     except IOError:
         print('File save has been unsuccessful')
@@ -108,7 +114,7 @@ def save_data():
 #incrementing proof leads to an entirely new hash 
 def valid_proof(transactions, last_hash, proof):
     #any cha
-    guess = (str(transactions) + str(last_hash) + str(proof)).encode()
+    guess = (str([tx.to_ordered_dict() for tx in transactions]) + str(last_hash) + str(proof)).encode()
     guess_hash = hash_string_256(guess)
     print(guess_hash)
     #checking if guest_hash begins with two 0's
@@ -125,8 +131,8 @@ def proof_of_work():
     return proof
 
 def verify_transaction(transaction):
-    sender_balance = get_balance(transaction['sender'])
-    if sender_balance >= transaction['amount']:
+    sender_balance = get_balance(transaction.sender)
+    if sender_balance >= transaction.amount:
         return True
     else:
         return False
@@ -138,13 +144,13 @@ def get_balance(participant):
     #get amount for a given transcation, for all transactions in the block
     #  if the sender is the same as the participant. Since the transactions are part of the block
     # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
-    tx_sender = [[tx['amount'] for tx in block.transactions
-                    if tx['sender'] == participant] for block in blockchain]
-    open_tx_sender = [tx['amount'] for tx in open_transactions if tx['sender'] == participant]
+    tx_sender = [[tx.amount for tx in block.transactions
+                    if tx.amount == participant] for block in blockchain]
+    open_tx_sender = [tx.amount for tx in open_transactions if tx.sender == participant]
     tx_sender.append(open_tx_sender)
     amount_sent = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_sender, 0)
-    tx_receiver = [[tx['amount'] for tx in block.transactions
-                    if tx['receiver'] == participant] for block in blockchain]
+    tx_receiver = [[tx.amount for tx in block.transactions
+                    if tx.receiver == participant] for block in blockchain]
     amount_received = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_receiver, 0)
     #tuple to subtract the amount sent from the amount received, returning our balance. 
     return amount_received - amount_sent
@@ -167,13 +173,9 @@ def add_value(receiver, sender=owner, amount=1.0):
     """
     #dictionary with key value pairs 
     #creating an ordered dictionary which takes a list of tuples
-    transaction = OrderedDict(
-        [('sender', sender), ('receiver', receiver), ('amount', amount)])
+    transaction = Transaction(sender, receiver, amount)
     if verify_transaction(transaction):
         open_transactions.append(transaction)
-        #adding the senders and recipients
-        participants.add(sender)
-        participants.add(receiver)
         save_data()
         return True
     return False
@@ -186,9 +188,7 @@ def mine_block():
     #adding proof of work function
     proof = proof_of_work()
     #when the block is mined, the user will be rewarded by receiving coins
-    #
-    reward_transaction = OrderedDict(
-        [('sender', 'MINING'), ('receiver', owner), ('amount', MINING_REWARD)])
+    reward_transaction = Transaction('MINING', owner, MINING_REWARD)
     #using range selection to copy the open_transactions list
     #so that we can use this locally
     #if the mine block ever fails, then our global open_transactions won't be affected
