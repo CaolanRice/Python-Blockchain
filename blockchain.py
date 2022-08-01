@@ -1,30 +1,17 @@
 from functools import reduce
-import hashlib
 import json
-from collections import OrderedDict
-import pickle
-
 
 from hash_functions import hash_string_256, hash_block
-from transaction import Transaction
 from block import Block
+from transaction import Transaction
+
 
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
 
-#adding a genesis block, the very first block that is a part of each chain, has dummy data
-# GENESIS_BLOCK = {
-#         'previous_hash': '',
-#         'index': 0,
-#         'transactions' : [],
-#         'proof': 10
-# }
-
 blockchain = []
 open_transactions = []
 owner = 'Caolan'
-#set of participants
-participants = {'Caolan'}
 
 def load_data():
     global blockchain
@@ -36,54 +23,33 @@ def load_data():
             # blockchain = file_content['chain']
             # open_transactions = file_content['ot']
 
-
             #using range selection to get the entire line except for \n
             #takes string in json format and gives back an object
             blockchain = json.loads(file_content[0][:-1])
             updated_blockchain = []
             for block in blockchain:
                 converted_tx = [Transaction(tx['sender'], tx['receiver'], tx['amount']) for tx in block['transactions']]
-                # converted_tx = [OrderedDict(
-                #         [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
                 #using new block class to create a Block object, will return a list of objects instead of dictionaries 
                 updated_block = Block(block['index'], block['previous_hash'], converted_tx, block['proof'], block['timestamp'])
-                #old code for block as dict
-                # updated_block = {
-                #     'previous_hash': block['previous_hash'],
-                #     'index': block['index'],
-                #     'proof': block['proof'],
-                #     'transactions': [OrderedDict(
-                #         [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])]) for tx in block['transactions']]
-                # }
                 updated_blockchain.append(updated_block)
             blockchain = updated_blockchain
             open_transactions = json.loads(file_content[1])
             updated_transactions = []
             for tx in open_transactions:
-                updated_transactions = Transaction(tx['sender'], tx['receiver'], tx['amount'])
-                updated_transaction = OrderedDict(
-                    [('sender', tx['sender']), ('receiver', tx['receiver']), ('amount', tx['amount'])])
+                updated_transaction = Transaction(tx['sender'], tx['receiver'], tx['amount'])
                 updated_transactions.append(updated_transaction)
             open_transactions = updated_transactions
 
    #adding genesis block and initializing our blockchain if an IOError or IndexError is thrown
     except (IOError, IndexError):
         GENESIS_BLOCK = Block(0, '', [], 10, 0)
-        GENESIS_BLOCK = {
-        'previous_hash': '',
-        'index': 0,
-        'transactions' : [],
-        'proof': 10
-        }
         blockchain = [GENESIS_BLOCK]
         open_transactions = []
-        # owner = 'Caolan'
-        # #set of participants
-        # participants = {'Caolan'}
     finally:
         print('Cleanup')
 
 load_data()
+
 
 def save_data():
     try:
