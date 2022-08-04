@@ -3,11 +3,11 @@ from printable import Printable
 
 #inheriting Printable class
 class Block(Printable):
-    def __init__(self, index, previous_hash, transactions, proof, time = time()):
-        self.index = index,
-        self.previous_hash = previous_hash,
+    def __init__(self, index, previous_hash, transactions, proof, time=time()):
+        self.index = index
+        self.previous_hash = previous_hash
         self.timestamp = time
-        self.transactions = transactions,
+        self.transactions = transactions
         self.proof = proof
     
       

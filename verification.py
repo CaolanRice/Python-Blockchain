@@ -2,14 +2,12 @@ from hash_functions import hash_string_256, hash_block
 
 
 class Verification:
-
 #function that checks whether proof is valid, proof must match guess_hash
 #incrementing proof leads to an entirely new hash 
     def valid_proof(self, transactions, last_hash, proof):
         #any cha
         guess = (str([tx.to_ordered_dict() for tx in transactions]) + str(last_hash) + str(proof)).encode()
         guess_hash = hash_string_256(guess)
-        print(guess_hash)
         #checking if guest_hash begins with two 0's
         return guess_hash[0:2] == '00'
 
@@ -38,6 +36,6 @@ class Verification:
             return False
 
     #get_balance arg
-    def verify_all_transactions(self, open_transactions):
+    def verify_all_transactions(self, open_transactions, get_balance):
         #using list comprehension and all function to return all TRUE (valid) transactions
-        return all([self.verify_transaction(tx) for tx in open_transactions]) 
+        return all([self.verify_transaction(tx, get_balance) for tx in open_transactions]) 
