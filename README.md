@@ -1,3 +1,3 @@
 # Python-Blockchain
 
-Test Test Test
+A blockchain project written in Python!

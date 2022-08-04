@@ -1,6 +1,5 @@
 import hashlib
 import json
-from transaction import Transaction
 
 def hash_string_256(string):
     return hashlib.sha256(string).hexdigest()
