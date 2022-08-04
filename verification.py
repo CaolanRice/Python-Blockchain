@@ -29,11 +29,9 @@ class Verification:
         return True 
 
     def verify_transaction(self, transaction, get_balance):
-        sender_balance = get_balance(transaction.sender)
-        if sender_balance >= transaction.amount:
-            return True
-        else:
-            return False
+        sender_balance = get_balance()
+        return sender_balance >= transaction.amount
+
 
     #get_balance arg
     def verify_all_transactions(self, open_transactions, get_balance):

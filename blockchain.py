@@ -10,7 +10,7 @@ from verification import Verification
 MINING_REWARD = 10
 
 class Blockchain:
-    def __init__(self):
+    def __init__(self, hosting_node_id):
         #named chain to differentiate from the Blockchain object
         #still initializing the empty blockchain list
         genesis_block = Block(0, '', [], 10, 0)
@@ -18,7 +18,7 @@ class Blockchain:
         self.chain = [genesis_block]
         self.open_transactions = []
         self.load_data()
-        pass
+        self.hosting_node = hosting_node_id
 
 
     def load_data(self):
@@ -49,12 +49,12 @@ class Blockchain:
 
    #adding genesis block and initializing our blockchain if an IOError or IndexError is thrown
         except (IOError, IndexError):
-            # GENESIS_BLOCK = Block(0, '', [], 10, 0)
-            # blockchain = [GENESIS_BLOCK]
+            # genesis_block = Block(0, '', [], 10, 0)
+            # blockchain = [genesis_block]
             # open_transactions = []
-            print('Exception Handlded')
+            print('Exception Handled')
         finally:
-            print('Cleanup')
+            print('Hi')
 
 
     def save_data(self):
@@ -94,11 +94,12 @@ class Blockchain:
     #return sender_balance >= transaction['amount'] because it will return a boolean anyway
 
 
-    def get_balance(self, participant):
+    def get_balance(self):
         #nested list comprehension to go through every block in the blockchain
         #get amount for a given transcation, for all transactions in the block
         #  if the sender is the same as the participant. Since the transactions are part of the block
         # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
+        participant = self.hosting_node
         tx_sender = [[tx.amount for tx in block.transactions
                         if tx.sender == participant] for block in self.chain]
         open_tx_sender = [tx.amount for tx in self.open_transactions if tx.sender == participant]
@@ -141,13 +142,13 @@ class Blockchain:
     
 
 #function to mine a new block and append it to the blockchain
-    def mine_block(self, node):
+    def mine_block(self):
         last_block = self.chain[-1]
         hashed_block = hash_block(last_block)
         #adding proof of work function
         proof = self.proof_of_work()
         #when the block is mined, the user will be rewarded by receiving coins
-        reward_transaction = Transaction('MINING', node, MINING_REWARD)
+        reward_transaction = Transaction('MINING', self.hosting_node, MINING_REWARD)
         #using range selection to copy the open_transactions list
         #so that we can use this locally
         #if the mine block ever fails, then our global open_transactions won't be affected
@@ -161,6 +162,8 @@ class Blockchain:
         #     'proof': proof
         # }
         self.chain.append(block)
+        self.open_transactions = []
+        self.save_data()
         return True
 
 
