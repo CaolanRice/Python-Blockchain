@@ -2,9 +2,9 @@ from hash_functions import hash_string_256, hash_block
 
 
 class Verification:
-#function that checks whether proof is valid, proof must match guess_hash
-#incrementing proof leads to an entirely new hash 
-    def valid_proof(self, transactions, last_hash, proof):
+    #this method is not accessing anything from the class, it only works with the input it is given, so @staticmethod is perfect here
+    @staticmethod
+    def valid_proof(transactions, last_hash, proof):
         #any cha
         guess = (str([tx.to_ordered_dict() for tx in transactions]) + str(last_hash) + str(proof)).encode()
         guess_hash = hash_string_256(guess)
@@ -12,7 +12,10 @@ class Verification:
         return guess_hash[0:2] == '00'
 
     #compare the stored hash in a given block with the recalculated hash of the previous block
-    def verify_blockchain(self, blockchain):
+    
+    #accesses valid proof
+    @classmethod
+    def verify_blockchain(cls, blockchain):
         #loop through the blocks in the blockchain and compare every block, wrapping 
         #the list with enumerate function to get back a tuple, giving us the index of the element
         #and the element itself.
@@ -23,17 +26,19 @@ class Verification:
         #compare value stored for this key with the last block. 
             if block.previous_hash != hash_block(blockchain[index - 1]):
                 return False
-            if not self.valid_proof(block.transactions[:-1], block.previous_hash, block.proof):
+            if not cls.valid_proof(block.transactions[:-1], block.previous_hash, block.proof):
                 print ('Proof of work is invalid')
                 return False
         return True 
 
-    def verify_transaction(self, transaction, get_balance):
+    @staticmethod
+    def verify_transaction(transaction, get_balance):
         sender_balance = get_balance()
         return sender_balance >= transaction.amount
 
 
-    #get_balance arg
-    def verify_all_transactions(self, open_transactions, get_balance):
+    #needs access to the class for verify_transaction
+    @classmethod
+    def verify_all_transactions(cls, open_transactions, get_balance):
         #using list comprehension and all function to return all TRUE (valid) transactions
-        return all([self.verify_transaction(tx, get_balance) for tx in open_transactions]) 
+        return all([cls.verify_transaction(tx, get_balance) for tx in open_transactions]) 

@@ -84,9 +84,8 @@ class Blockchain:
         last_block = self.chain[-1]
         last_hash = hash_block(last_block)
         proof = 0
-        verifier = Verification()
         #tries different proof of work numbers until it finds a valid one
-        while not verifier.valid_proof(self.open_transactions, last_hash, proof):
+        while not Verification.valid_proof(self.open_transactions, last_hash, proof):
             proof += 1
         return proof
 
@@ -130,11 +129,10 @@ class Blockchain:
         #dictionary with key value pairs 
         #creating an ordered dictionary which takes a list of tuples
         transaction = Transaction(sender, recipient, amount)
-        verifier = Verification()
         #foward get_balance func without () as don't want to execute the function, just forward it 
         #which passes a reference to the function onto verify_transaction, so this function can then call get balance
         #for us
-        if verifier.verify_transaction(transaction, self.get_balance):
+        if Verification.verify_transaction(transaction, self.get_balance):
             self.open_transactions.append(transaction)
             self.save_data()
             return True
