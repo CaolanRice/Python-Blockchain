@@ -120,7 +120,7 @@ class Blockchain:
         return self.chain[-1]
 
 #blockchain is initialized here with value of 1 
-    def add_value(self, recipient, sender, amount=1.0):
+    def send_transaction(self, recipient, sender, amount=1.0):
         """Append new value AND the last blockchain value to the blockchain
         
         Arguments:
@@ -131,9 +131,9 @@ class Blockchain:
         #dictionary with key value pairs 
         #creating an ordered dictionary which takes a list of tuples
         transaction = Transaction(sender, recipient, amount)
-        #foward get_balance func without () as don't want to execute the function, just forward it 
-        #which passes a reference to the function onto verify_transaction, so this function can then call get balance
-        #for us
+        #If hosting_node = None, user should not be able to make transactions or mine a block
+        if self.hosting_node == None:
+            return False
         if Verification.verify_transaction(transaction, self.get_balance):
             self.open_transactions.append(transaction)
             self.save_data()
@@ -143,6 +143,8 @@ class Blockchain:
 
 #function to mine a new block and append it to the blockchain
     def mine_block(self):
+        if self.hosting_node == None:
+            return False
         last_block = self.chain[-1]
         hashed_block = hash_block(last_block)
         #adding proof of work function
