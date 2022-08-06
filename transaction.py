@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from printable import Printable
+from utility.printable_dict import Printable
 
 #inheriting Printable class
 class Transaction(Printable):

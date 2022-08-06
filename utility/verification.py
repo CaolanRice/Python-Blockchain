@@ -1,8 +1,8 @@
-from hash_functions import hash_string_256, hash_block
+from utility.hash_functions import hash_string_256, hash_block
 
 
 class Verification:
-    #this method is not accessing anything from the class, it only works with the input it is given, so @staticmethod is perfect here
+    #this method is not accessing anything from the class, it only uses with the input it is given
     @staticmethod
     def valid_proof(transactions, last_hash, proof):
         #any cha
@@ -13,7 +13,7 @@ class Verification:
 
     #compare the stored hash in a given block with the recalculated hash of the previous block
     
-    #accesses valid proof
+    #accesses valid proof method of the class
     @classmethod
     def verify_blockchain(cls, blockchain):
         #loop through the blocks in the blockchain and compare every block, wrapping 

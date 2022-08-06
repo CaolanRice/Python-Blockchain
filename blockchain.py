@@ -1,13 +1,15 @@
 from functools import reduce
 import json
 
-from hash_functions import hash_block
 from block import Block
 from transaction import Transaction
-from verification import Verification
+from utility.verification import Verification
+from utility.hash_functions import hash_block
 
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
+
+print(__name__)
 
 class Blockchain:
     def __init__(self, hosting_node_id):
@@ -54,7 +56,7 @@ class Blockchain:
             # open_transactions = []
             print('Exception Handled')
         finally:
-            print('Hi')
+            print('')
 
 
     def save_data(self):

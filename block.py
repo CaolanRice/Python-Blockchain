@@ -1,5 +1,5 @@
 from time import time
-from printable import Printable
+from utility.printable_dict import Printable
 
 #inheriting Printable class
 class Block(Printable):
