@@ -1,4 +1,5 @@
 from utility.hash_functions import hash_string_256, hash_block
+from wallet import Wallet
 
 
 class Verification:
@@ -32,13 +33,16 @@ class Verification:
         return True 
 
     @staticmethod
-    def verify_transaction(transaction, get_balance):
-        sender_balance = get_balance()
-        return sender_balance >= transaction.amount
+    def verify_transaction(transaction, get_balance, check_funds=True):
+        if check_funds:
+            sender_balance = get_balance()
+            return sender_balance >= transaction.amount and Wallet.verify_transaction(transaction)
+        else:
+            return Wallet.verify_transaction(transaction)    
 
 
     #needs access to the class for verify_transaction
     @classmethod
     def verify_all_transactions(cls, open_transactions, get_balance):
         #using list comprehension and all function to return all TRUE (valid) transactions
-        return all([cls.verify_transaction(tx, get_balance) for tx in open_transactions]) 
+        return all([cls.verify_transaction(tx, get_balance, False) for tx in open_transactions]) 

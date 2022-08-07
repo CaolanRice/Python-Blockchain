@@ -52,7 +52,8 @@ class Node:
                 #tuple unpacking - assigning individual elements of the tuple to a variable*
                 recipient, amount = tx_data
                 #adding the transaction amount to the blockchain
-                if self.blockchain.send_transaction(recipient, self.wallet.public_key, amount=amount):
+                signature = self.wallet.sign_transaction(self.wallet.public_key, recipient, amount)
+                if self.blockchain.send_transaction(recipient, self.wallet.public_key, signature, amount=amount):
                     print('Added transaction')
                 else:
                     print('Transaction failed')

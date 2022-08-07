@@ -1,5 +1,6 @@
-from turtle import pu
 from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Hash import SHA256
 import Crypto.Random
 import binascii
 
@@ -43,3 +44,18 @@ class Wallet:
         public_key = private_key.publickey()
         #gets a key in binary format, passes it to hexlify which converts to hexadecimal and then decodes to ascii
         return (binascii.hexlify(private_key.exportKey(format='DER')).decode('ascii'), (binascii.hexlify(public_key.exportKey(format='DER')).decode('ascii')))
+
+    #generates a signature for a transaction
+    def sign_transaction(self, sender, recipient, amount):
+        #turns private_key from a str back to binary
+        signer = PKCS1_v1_5.new(RSA.import_key(binascii.unhexlify(self.private_key)))
+        hash_sign = SHA256.new((str(sender) + str(recipient) + str(amount)).encode('utf8'))
+        signature = signer.sign(hash_sign)
+        return binascii.hexlify(signature).decode('ascii')
+
+    @staticmethod
+    def verify_transaction(transaction):
+        public_key = RSA.import_key(binascii.unhexlify(transaction.sender))
+        verifier = PKCS1_v1_5.new(public_key)
+        hash_verify = SHA256.new((str(transaction.sender) + str(transaction.recipient) + str(transaction.amount)).encode('utf8'))
+        return verifier.verify(hash_verify, binascii.unhexlify(transaction.signature))

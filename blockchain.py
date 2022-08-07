@@ -5,6 +5,7 @@ from block import Block
 from transaction import Transaction
 from utility.verification import Verification
 from utility.hash_functions import hash_block
+from wallet import Wallet
 
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
@@ -33,7 +34,7 @@ class Blockchain:
                 updated_blockchain = []
                 for block in blockchain:
                     converted_tx = [Transaction
-                    (tx['sender'], tx['recipient'], tx['amount']) for tx in block['transactions']]
+                    (tx['sender'], tx['recipient'], tx['signature'], tx['amount']) for tx in block['transactions']]
                     #using new block class to create a Block object, will return a list of objects instead of dictionaries 
                     updated_block = Block(
                         block['index'], block['previous_hash'], converted_tx, block['proof'], block['timestamp'])
@@ -44,7 +45,7 @@ class Blockchain:
                 updated_transactions = []
                 for tx in open_transactions:
                     updated_transaction = Transaction(
-                        tx['sender'], tx['recipient'], tx['amount'])
+                        tx['sender'], tx['recipient'], tx['signature'], tx['amount'])
                     updated_transactions.append(updated_transaction)
                     #storing the updated transactions in the open_transactions attribute 
                 self.open_transactions = updated_transactions
@@ -120,7 +121,7 @@ class Blockchain:
         return self.chain[-1]
 
 #blockchain is initialized here with value of 1 
-    def send_transaction(self, recipient, sender, amount=1.0):
+    def send_transaction(self, recipient, sender, signature, amount=1.0):
         """Append new value AND the last blockchain value to the blockchain
         
         Arguments:
@@ -130,10 +131,10 @@ class Blockchain:
         """
         #dictionary with key value pairs 
         #creating an ordered dictionary which takes a list of tuples
-        transaction = Transaction(sender, recipient, amount)
-        #If hosting_node = None, user should not be able to make transactions or mine a block
         if self.hosting_node == None:
             return False
+        transaction = Transaction(sender, recipient, signature, amount)
+        #If hosting_node = None, user should not be able to make transactions or mine a block
         if Verification.verify_transaction(transaction, self.get_balance):
             self.open_transactions.append(transaction)
             self.save_data()
@@ -150,19 +151,16 @@ class Blockchain:
         #adding proof of work function
         proof = self.proof_of_work()
         #when the block is mined, the user will be rewarded by receiving coins
-        reward_transaction = Transaction('MINING', self.hosting_node, MINING_REWARD)
+        reward_transaction = Transaction('MINING', self.hosting_node, '', MINING_REWARD)
         #using range selection to copy the open_transactions list
         #so that we can use this locally
         #if the mine block ever fails, then our global open_transactions won't be affected
         copy_transactions = self.open_transactions[:]
+        for tx in copy_transactions:
+            if not Wallet.verify_transaction(tx):
+                return False
         copy_transactions.append(reward_transaction)
         block = Block(len(self.chain), hashed_block, copy_transactions, proof)
-        # block = {
-        #     'previous_hash': hashed_block,
-        #     'index': len(blockchain),
-        #     'transactions': copy_transactions,
-        #     'proof': proof
-        # }
         self.chain.append(block)
         self.open_transactions = []
         self.save_data()
