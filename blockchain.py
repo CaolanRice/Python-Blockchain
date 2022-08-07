@@ -1,16 +1,14 @@
 from functools import reduce
 import json
 
+from utility.hash_functions import hash_block
 from block import Block
 from transaction import Transaction
 from utility.verification import Verification
-from utility.hash_functions import hash_block
 from wallet import Wallet
 
 #constant, reward that user will receive when they mine a block
 MINING_REWARD = 10
-
-print(__name__)
 
 class Blockchain:
     def __init__(self, hosting_node_id):
@@ -18,11 +16,27 @@ class Blockchain:
         #still initializing the empty blockchain list
         genesis_block = Block(0, '', [], 10, 0)
         #first element of the chain will be the genesis block, this will be overwritten if we load_data
+        #encapsulating the chain and open_transactions 
         self.chain = [genesis_block]
-        self.open_transactions = []
+        self.__open_transactions = []
         self.load_data()
         self.hosting_node = hosting_node_id
 
+    #controlling access for reading and writing.
+    @property
+    def chain(self):
+        return self.__chain[:]
+
+    @chain.setter
+    def chain(self, val):
+        self.__chain = val
+
+    # def get_chain(self):
+    #     #returning a copy, so this element gets edited, it won't edit the original chain list
+    #     return self.__chain[:]
+    
+    def get_open_transactions(self):
+        return self.__open_transactions
 
     def load_data(self):
         try:
@@ -48,7 +62,7 @@ class Blockchain:
                         tx['sender'], tx['recipient'], tx['signature'], tx['amount'])
                     updated_transactions.append(updated_transaction)
                     #storing the updated transactions in the open_transactions attribute 
-                self.open_transactions = updated_transactions
+                self.__open_transactions = updated_transactions
 
    #adding genesis block and initializing our blockchain if an IOError or IndexError is thrown
         except (IOError, IndexError):
@@ -57,7 +71,7 @@ class Blockchain:
             # open_transactions = []
             print('Exception Handled')
         finally:
-            print('')
+            print('Hi')
 
 
     def save_data(self):
@@ -65,30 +79,22 @@ class Blockchain:
             with open('blockchain.txt', mode='w') as file:
                 saved_chain = [block.__dict__ for block in 
                     [Block(block_el.index, block_el.previous_hash, [tx.__dict__ for tx in block_el.transactions], block_el.proof, block_el.timestamp) 
-                    for block_el in self.chain]]
+                    for block_el in self.__chain]]
                 file.write(json.dumps(saved_chain))
                 file.write('\n')
-                saved_tx = [tx.__dict__ for tx in self.open_transactions]
+                saved_tx = [tx.__dict__ for tx in self.__open_transactions]
                 file.write(json.dumps(saved_tx))
 
         except IOError:
             print('File save has been unsuccessful')
 
-        #attempted using pickle library to preserve dictionary output instead of string with json
-        # save_data = {
-        #     'chain': blockchain,
-        #     'ot': open_transactions
-        # }
-        # file.write(pickle.dumps(save_data))
-     
-
     def proof_of_work(self):
         """Generate a proof of work for the open transactions, the hash of the previous block and a random number (which is guessed until it fits)."""
-        last_block = self.chain[-1]
+        last_block = self.__chain[-1]
         last_hash = hash_block(last_block)
         proof = 0
         #tries different proof of work numbers until it finds a valid one
-        while not Verification.valid_proof(self.open_transactions, last_hash, proof):
+        while not Verification.valid_proof(self.__open_transactions, last_hash, proof):
             proof += 1
         return proof
 
@@ -103,12 +109,12 @@ class Blockchain:
         # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
         participant = self.hosting_node
         tx_sender = [[tx.amount for tx in block.transactions
-                        if tx.sender == participant] for block in self.chain]
-        open_tx_sender = [tx.amount for tx in self.open_transactions if tx.sender == participant]
+                        if tx.sender == participant] for block in self.__chain]
+        open_tx_sender = [tx.amount for tx in self.__open_transactions if tx.sender == participant]
         tx_sender.append(open_tx_sender)
         amount_sent = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_sender, 0)
         tx_recipient = [[tx.amount for tx in block.transactions
-                        if tx.recipient == participant] for block in self.chain]
+                        if tx.recipient == participant] for block in self.__chain]
         amount_received = reduce(lambda tx_sum, tx_amount: tx_sum + sum(tx_amount) if len(tx_amount) > 0 else tx_sum + 0, tx_recipient, 0)
         #tuple to subtract the amount sent from the amount received, returning our balance. 
         return amount_received - amount_sent
@@ -116,12 +122,12 @@ class Blockchain:
 
     def get_last_value(self):
         #-1 accesses the last value of the list
-        if len(self.chain) < 1:
+        if len(self.__chain) < 1:
             return None
-        return self.chain[-1]
+        return self.__chain[-1]
 
 #blockchain is initialized here with value of 1 
-    def send_transaction(self, recipient, sender, signature, amount=1.0):
+    def add_value(self, recipient, sender, amount=1.0):
         """Append new value AND the last blockchain value to the blockchain
         
         Arguments:
@@ -131,12 +137,12 @@ class Blockchain:
         """
         #dictionary with key value pairs 
         #creating an ordered dictionary which takes a list of tuples
-        if self.hosting_node == None:
-            return False
-        transaction = Transaction(sender, recipient, signature, amount)
-        #If hosting_node = None, user should not be able to make transactions or mine a block
+        transaction = Transaction(sender, recipient, amount)
+        #foward get_balance func without () as don't want to execute the function, just forward it 
+        #which passes a reference to the function onto verify_transaction, so this function can then call get balance
+        #for us
         if Verification.verify_transaction(transaction, self.get_balance):
-            self.open_transactions.append(transaction)
+            self.__open_transactions.append(transaction)
             self.save_data()
             return True
         return False
@@ -145,26 +151,32 @@ class Blockchain:
 #function to mine a new block and append it to the blockchain
     def mine_block(self):
         if self.hosting_node == None:
-            return False
-        last_block = self.chain[-1]
+            return None
+        last_block = self.__chain[-1]
         hashed_block = hash_block(last_block)
         #adding proof of work function
         proof = self.proof_of_work()
         #when the block is mined, the user will be rewarded by receiving coins
-        reward_transaction = Transaction('MINING', self.hosting_node, '', MINING_REWARD)
+        reward_transaction = Transaction('MINING', self.hosting_node, MINING_REWARD)
         #using range selection to copy the open_transactions list
         #so that we can use this locally
         #if the mine block ever fails, then our global open_transactions won't be affected
-        copy_transactions = self.open_transactions[:]
+        copy_transactions = self.__open_transactions[:]
         for tx in copy_transactions:
             if not Wallet.verify_transaction(tx):
-                return False
+                return None
         copy_transactions.append(reward_transaction)
-        block = Block(len(self.chain), hashed_block, copy_transactions, proof)
-        self.chain.append(block)
-        self.open_transactions = []
+        block = Block(len(self.__chain), hashed_block, copy_transactions, proof)
+        # block = {
+        #     'previous_hash': hashed_block,
+        #     'index': len(blockchain),
+        #     'transactions': copy_transactions,
+        #     'proof': proof
+        # }
+        self.__chain.append(block)
+        self.__open_transactions = []
         self.save_data()
-        return True
+        return block
 
 
     
