@@ -129,7 +129,7 @@ class Blockchain:
         return self.__chain[-1]
 
 #blockchain is initialized here with value of 1 
-    def add_transaction(self, recipient, sender, signature amount=1.0):
+    def add_transaction(self, recipient, sender, signature, amount=1.0):
         """Append new value AND the last blockchain value to the blockchain
         
         Arguments:

@@ -76,23 +76,45 @@ def mine_block():
 
 @app.route('/addtx', methods=['POST'])
 def add_transaction():
+    if wallet.public_key == None:
+        response = {
+            'message': 'Wallet missing'
+        }
+        return jsonify(response), 400
     user_data = request.get_json()
     if not user_data:
         response = {
             'message': 'Data not found'
         }
-        return response, 400
+        return jsonify(response), 400
     required_fields = ['recipient', 'amount']
     #if all fields NOT are part of incoming values
     if not all(field in user_data for field in required_fields):
         response = {
             'message': 'Some required data is missing'
         }
-        return response, 400
-    recipient = user_data['amount']
+        return jsonify(response), 400
+    recipient = user_data['recipient']
+    amount = user_data['amount']
     signature = wallet.sign_transaction(wallet.public_key, recipient, amount)
-    blockchain.add_transaction(recipient, wallet.public_key, amount)
-    # signature = wallet.sign_transaction(wallet.public_key, recipient, amount)
+    successful = blockchain.add_transaction(recipient, wallet.public_key, signature, amount)
+    if successful:
+        response = {
+            'message': 'Transaction completed successfully',
+            'transaction': {
+                'sender': wallet.public_key,
+                'recipient': recipient,
+                'amount': amount,
+                'signature': signature,
+                'balance': blockchain.get_balance()
+            }
+            }
+        return jsonify(response), 200
+    else:
+        response = {
+            'message': 'Failed to add a transaction'
+        }
+        return jsonify(response), 500
 
 @app.route('/balance', methods=['GET'])
 def get_balance():
