@@ -1,7 +1,7 @@
 import json
 
 from pkg_resources import require
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
  
 from wallet import Wallet
@@ -11,6 +11,11 @@ app = Flask(__name__)
 wallet = Wallet()
 blockchain = Blockchain(wallet.public_key)
 CORS(app)
+
+
+@app.route('/', methods=['GET'])
+def get_ui():
+    return send_from_directory('user_interface', 'blockchain_ui.html')
 
 @app.route('/wallet', methods=['POST'])
 def create_keys():
@@ -46,11 +51,6 @@ def load_keys():
             'message': 'Failed to load keys'
         }
         return jsonify(response), 500
-    
-
-@app.route('/', methods=['GET'])
-def get_ui():
-    return 'Heylo World'
 
 @app.route('/mine', methods=['POST'])
 def mine_block():
@@ -74,7 +74,7 @@ def mine_block():
             }
             return jsonify(response), 500
 
-@app.route('/addtx', methods=['POST'])
+@app.route('/transaction', methods=['POST'])
 def add_transaction():
     if wallet.public_key == None:
         response = {
@@ -115,6 +115,12 @@ def add_transaction():
             'message': 'Failed to add a transaction'
         }
         return jsonify(response), 500
+
+@app.route('/transactions', methods=['GET'])
+def get_open_transactions():
+    transactions = blockchain.get_open_transactions()
+    dict_transactions = [tx.__dict__ for tx in transactions]
+    return jsonify(dict_transactions), 200
 
 @app.route('/balance', methods=['GET'])
 def get_balance():
