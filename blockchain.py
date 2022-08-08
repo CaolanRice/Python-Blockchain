@@ -107,6 +107,8 @@ class Blockchain:
         #get amount for a given transcation, for all transactions in the block
         #  if the sender is the same as the participant. Since the transactions are part of the block
         # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
+        if self.hosting_node == None:
+            return None
         participant = self.hosting_node
         tx_sender = [[tx.amount for tx in block.transactions
                         if tx.sender == participant] for block in self.__chain]
@@ -127,7 +129,7 @@ class Blockchain:
         return self.__chain[-1]
 
 #blockchain is initialized here with value of 1 
-    def add_value(self, recipient, sender, amount=1.0):
+    def add_transaction(self, recipient, sender, signature amount=1.0):
         """Append new value AND the last blockchain value to the blockchain
         
         Arguments:
@@ -137,7 +139,7 @@ class Blockchain:
         """
         #dictionary with key value pairs 
         #creating an ordered dictionary which takes a list of tuples
-        transaction = Transaction(sender, recipient, amount)
+        transaction = Transaction(sender, recipient, signature, amount)
         #foward get_balance func without () as don't want to execute the function, just forward it 
         #which passes a reference to the function onto verify_transaction, so this function can then call get balance
         #for us
@@ -157,7 +159,7 @@ class Blockchain:
         #adding proof of work function
         proof = self.proof_of_work()
         #when the block is mined, the user will be rewarded by receiving coins
-        reward_transaction = Transaction('MINING', self.hosting_node, MINING_REWARD)
+        reward_transaction = Transaction('MINING', self.hosting_node, '', MINING_REWARD)
         #using range selection to copy the open_transactions list
         #so that we can use this locally
         #if the mine block ever fails, then our global open_transactions won't be affected

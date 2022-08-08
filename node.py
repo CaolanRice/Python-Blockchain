@@ -1,4 +1,7 @@
-from flask import Flask, jsonify
+import json
+
+from pkg_resources import require
+from flask import Flask, jsonify, request
 from flask_cors import CORS
  
 from wallet import Wallet
@@ -8,6 +11,42 @@ app = Flask(__name__)
 wallet = Wallet()
 blockchain = Blockchain(wallet.public_key)
 CORS(app)
+
+@app.route('/wallet', methods=['POST'])
+def create_keys():
+    wallet.create_keys() 
+    if wallet.save_keys():
+        global blockchain
+        blockchain = Blockchain(wallet.public_key)
+        response = {
+            'public_key': wallet.public_key,
+            'private_key': wallet.private_key,
+            'balance': blockchain.get_balance()
+        }
+        return jsonify(response), 200
+    else:
+        response = {
+            'message': 'Failed to save keys'
+        }
+        return jsonify(response), 500
+
+@app.route('/wallet', methods=['GET'])
+def load_keys():
+    if  wallet.load_keys():
+        global blockchain
+        blockchain = Blockchain(wallet.public_key)
+        response = {
+            'public_key': wallet.public_key,
+            'private_key': wallet.private_key,
+            'balance': blockchain.get_balance()
+        }
+        return jsonify(response), 200
+    else: 
+        response = {
+            'message': 'Failed to load keys'
+        }
+        return jsonify(response), 500
+    
 
 @app.route('/', methods=['GET'])
 def get_ui():
@@ -24,7 +63,8 @@ def mine_block():
             tx.__dict__ for tx in dict_block['transactions']]
         response = {
                 'message': 'New block mined successfully',
-                'block': dict_block
+                'block': dict_block,
+                'balance': blockchain.get_balance()
             }
         return jsonify(response), 201
     else:
@@ -33,6 +73,42 @@ def mine_block():
             'wallet_setup': wallet.public_key != None 
             }
             return jsonify(response), 500
+
+@app.route('/addtx', methods=['POST'])
+def add_transaction():
+    user_data = request.get_json()
+    if not user_data:
+        response = {
+            'message': 'Data not found'
+        }
+        return response, 400
+    required_fields = ['recipient', 'amount']
+    #if all fields NOT are part of incoming values
+    if not all(field in user_data for field in required_fields):
+        response = {
+            'message': 'Some required data is missing'
+        }
+        return response, 400
+    recipient = user_data['amount']
+    signature = wallet.sign_transaction(wallet.public_key, recipient, amount)
+    blockchain.add_transaction(recipient, wallet.public_key, amount)
+    # signature = wallet.sign_transaction(wallet.public_key, recipient, amount)
+
+@app.route('/balance', methods=['GET'])
+def get_balance():
+    balance = blockchain.get_balance()
+    if balance != None:
+        response = {
+            'message': 'Successfully retrieved balance',
+            'Balance': balance
+        }
+        return jsonify(response), 200
+    else:
+        response = {
+            'message': 'Failed to load balance',
+            'wallet_setup': wallet.public_key != None
+        }
+        return jsonify(response), 500
 
 
 @app.route('/chain', methods=['GET'])
