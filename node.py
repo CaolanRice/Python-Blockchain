@@ -1,4 +1,5 @@
 import json
+from platform import node
 
 from pkg_resources import require
 from flask import Flask, jsonify, request, send_from_directory
@@ -148,7 +149,49 @@ def get_blockchain():
         dict_block['transactions'] = [tx.__dict__ for tx in dict_block['transactions']]
     return jsonify(dict_chain), 200
     
+@app.route('/addnode', methods=['POST'])
+def add_node(node):
+    user_data = request.get_json()
+    if not user_data:
+        response = {
+            'message': 'No data found'
+        }
+        return jsonify(response), 400
+        #user_data is a dict due to get_json() so IN checks for existence of keys in that dict
+    if 'node' not in user_data:
+        response = {
+            'message': 'No node data found'
+        }
+        return jsonify(response), 400
+    node = user_data['node']
+    blockchain.add_peer_node(node)
+    response = {
+        'message': 'Node added successfully',
+        'all nodes': blockchain.get_peer_nodes()
+    }
+    return jsonify(response), 200
 
+@app.route('/removenode/<node_url>', methods=['DELETE'])
+def remove_node(node_url):
+    if node_url == '' or node_url == None:
+        response = {
+            'message': 'Node not found'
+        }
+        return jsonify(response), 400
+    blockchain.remove_peer_node(node_url)
+    response = {
+        'message': 'Node removed',
+        'all_nodes': blockchain.get_peer_nodes()
+    }
+    return jsonify(response), 200
+
+@app.route('/getnodes', methods=['GET'])
+def get_nodes():
+    nodes = blockchain.get_peer_nodes()
+    response = {
+        'all_nodes': nodes
+    }
+    return jsonify(response), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -19,8 +19,9 @@ class Blockchain:
         #encapsulating the chain and open_transactions 
         self.chain = [genesis_block]
         self.__open_transactions = []
-        self.load_data()
         self.hosting_node = hosting_node_id
+        self.__peer_node = set()
+        self.load_data()
 
     #controlling access for reading and writing.
     @property
@@ -34,6 +35,23 @@ class Blockchain:
     # def get_chain(self):
     #     #returning a copy, so this element gets edited, it won't edit the original chain list
     #     return self.__chain[:]
+
+
+    #adds a peer node to the peer node set
+    def add_peer_node(self, node):
+        """Node URL should be added as an argument"""
+        self.__peer_nodes.add(node)
+        self.save_data()
+    
+    #removes a node from the peer nodes set
+    def remove_peer_node(self, node):
+        self.__peer_nodes.discard(node)
+        self.save_data()
+    
+    #returns list of connected peer nodes
+    def get_peer_nodes(self):
+        return list(self.__peer_nodes)
+
     
     def get_open_transactions(self):
         return self.__open_transactions
@@ -63,6 +81,8 @@ class Blockchain:
                     updated_transactions.append(updated_transaction)
                     #storing the updated transactions in the open_transactions attribute 
                 self.__open_transactions = updated_transactions
+                peer_nodes = json.loads(file_content[2])
+                self.__peer_nodes = set(peer_nodes)
 
    #adding genesis block and initializing our blockchain if an IOError or IndexError is thrown
         except (IOError, IndexError):
@@ -84,6 +104,8 @@ class Blockchain:
                 file.write('\n')
                 saved_tx = [tx.__dict__ for tx in self.__open_transactions]
                 file.write(json.dumps(saved_tx))
+                file.write('\n')
+                file.write(json.dumps(list(self.__peer_node)))
 
         except IOError:
             print('File save has been unsuccessful')
