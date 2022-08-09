@@ -1,5 +1,6 @@
 from functools import reduce
 import json
+import requests
 
 from utility.hash_functions import hash_block
 from block import Block
@@ -33,11 +34,6 @@ class Blockchain:
     def chain(self, val):
         self.__chain = val
 
-    # def get_chain(self):
-    #     #returning a copy, so this element gets edited, it won't edit the original chain list
-    #     return self.__chain[:]
-
-
     #adds a peer node to the peer node set
     def add_peer_node(self, node):
         """Node URL should be added as an argument"""
@@ -53,6 +49,28 @@ class Blockchain:
     def get_peer_nodes(self):
         return list(self.__peer_nodes)
 
+    def add_block(self, block):
+        #validate block then store it
+        #extracting attributes from transaction dict from block, storing it in new Transaction object then creating a list of these transactions
+        transactions = [Transaction(tx['sender'], tx['recipeint'], tx['signature'], tx['amount']) for tx in block['transactions']]
+        #range selection used to exclude the reward from transactions because otherwise verification will fail (proof of work is checked before adding a reward transaction) 
+        proof_valid = Verification.valid_proof(transactions[:-1], block['previous_hash'], block['proof'])
+        matched_hash = hash_block(self.chain[-1]) == block['previous_hash']
+        if not proof_valid or not matched_hash:
+            return False
+        #accessing private chain to directly add this to chain stored on this node
+        converted_block = Block(block['index'], block['previous_hash'], transactions, block['proof'], block['timestamp'] )
+        self.__chain.append(converted_block)
+        stored_transactions = self.__open_transactions[:]
+        for incoming_tx in block['transactions']:
+            for open_tx in stored_transactions:
+                if open_tx.sender == incoming_tx['sender'] and open_tx.recipient == incoming_tx['recipient'] and open_tx.amount == incoming_tx['amount'] and open_tx.signature == incoming_tx['signature']:
+                    try:
+                        self.__open_transactions.remove(open_tx)
+                    except ValueError:
+                        print('Item was already removed') 
+        self.save_data()
+        return True
     
     def get_open_transactions(self):
         return self.__open_transactions
@@ -121,18 +139,15 @@ class Blockchain:
             proof += 1
         return proof
 
-
-    #return sender_balance >= transaction['amount'] because it will return a boolean anyway
-
-
-    def get_balance(self):
-        #nested list comprehension to go through every block in the blockchain
-        #get amount for a given transcation, for all transactions in the block
-        #  if the sender is the same as the participant. Since the transactions are part of the block
-        # and we have a list of blocks, we wrap it with another list comprehension where we go through every block
-        if self.public_key == None:
-            return None
-        participant = self.public_key
+    def get_balance(self, sender=None):
+        #sets sender to public key if it's None
+        if sender == None:
+            if self.public_key == None:
+                return None
+            participant = self.public_key
+        #if there is a sender, set participant to sender which will be a public_key
+        else:
+            participant = sender
         tx_sender = [[tx.amount for tx in block.transactions
                         if tx.sender == participant] for block in self.__chain]
         open_tx_sender = [tx.amount for tx in self.__open_transactions if tx.sender == participant]
@@ -152,7 +167,7 @@ class Blockchain:
         return self.__chain[-1]
 
 #blockchain is initialized here with value of 1 
-    def add_transaction(self, recipient, sender, signature, amount=1.0):
+    def add_transaction(self, recipient, sender, signature, amount=1.0, is_receiving=False):
         """Append new value AND the last blockchain value to the blockchain
         
         Arguments:
@@ -160,8 +175,8 @@ class Blockchain:
             :recipient: recipient of the coins
             :Amount: amount of coins sent, default is 1
         """
-        #dictionary with key value pairs 
-        #creating an ordered dictionary which takes a list of tuples
+        # if self.public_key == None:
+        #     return False
         transaction = Transaction(sender, recipient, signature, amount)
         #foward get_balance func without () as don't want to execute the function, just forward it 
         #which passes a reference to the function onto verify_transaction, so this function can then call get balance
@@ -169,6 +184,16 @@ class Blockchain:
         if Verification.verify_transaction(transaction, self.get_balance):
             self.__open_transactions.append(transaction)
             self.save_data()
+            if not is_receiving:
+                for node in self.__peer_node:
+                    url = 'http://{}/broadcast-transaction'.format(node)
+                    try: 
+                        response = requests.post(url, json={'sender': sender, 'recipient': recipient, 'signature': signature, 'amount': amount})
+                        if response.status_code == 400 or response.status_code == 500:
+                            print('Transaction declined')
+                            return False
+                    except requests.exceptions.ConnectionError:
+                        continue
             return True
         return False
     
@@ -201,6 +226,18 @@ class Blockchain:
         self.__chain.append(block)
         self.__open_transactions = []
         self.save_data()
+        for node in self.__peer_nodes:
+            url = 'http://{}/broadcast-block'.format(node)
+            converted_block = block.__dict__.copy()
+            #get transactions in dict format
+            converted_block['transactions'] = [tx.__dict__ for tx in converted_block['transactions']]
+            try:
+                response = requests.post(url, json={'block': converted_block})
+                if response.status_code == 400 or response.status_code == 500:
+                        print('Block declined')
+                        return False
+            except requests.exceptions.ConnectionError:
+                continue
         return block
 
 

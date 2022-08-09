@@ -1,3 +1,6 @@
+from itertools import chain
+import json
+from operator import index
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
  
@@ -121,6 +124,43 @@ def get_open_transactions():
     dict_transactions = [tx.__dict__ for tx in transactions]
     return jsonify(dict_transactions), 200
 
+@app.route('/broadcast-transaction')
+def broadcast_transaction():
+    user_data = request.get_json()
+    if not user_data:
+        response = {
+            'message': 'No data found'
+        }
+        return jsonify(response), 400
+    required_data = ['sender', 'recipient', 'signature', 'amount']
+    #if all keys are NOT found in required_data dict
+    if not all(key in user_data for key in required_data):
+        response = {
+            'message': 'Some data is missing'
+        }
+        return jsonify(response), 400
+    
+    success = blockchain.add_transaction(user_data['recipient'], user_data['sender'], 
+        user_data['signature'], user_data['amount'], is_receiving=True)
+    if success:
+        response = {
+            'message': 'Transaction completed successfully',
+            'transaction': {
+                'sender': user_data['sender'],
+                'recipient': user_data['recipient'],
+                'amount': user_data['amount'],
+                'signature': user_data['signature'],
+            }
+            }
+        return jsonify(response), 200
+    else:
+        response = {
+            'message': 'Failed to add a transaction'
+        }
+        return jsonify(response), 500
+
+
+
 @app.route('/balance', methods=['GET'])
 def get_balance():
     balance = blockchain.get_balance()
@@ -190,6 +230,31 @@ def get_nodes():
         'all_nodes': nodes
     }
     return jsonify(response), 200
+
+@app.route('/broadcast-block', methods=['POST'])
+def broadcast_block():
+    user_data = request.get_json()
+    if not user_data:
+        response = {'message': 'No data found'}
+        return jsonify(response), 400
+    if 'block' not in user_data:
+        response = {'message': 'Block data is missing'}
+        return jsonify(response), 400
+    block = user_data['block']
+    #if index on peer node is +1 index of previous block on the peer node
+    if block['index'] == blockchain.chain[-1].index + 1:
+        if blockchain.add_block(block):
+            response = {'message': 'Block added'}
+            return jsonify(response), 200
+        else:
+            response = {'message': 'Blockchain error'}
+            return jsonify(response), 500
+    elif block['index'] > blockchain.chain[-1 ].index:
+        pass
+    else:
+        response = {'message': 'Some blockchain data missing, a block might not have been added'}
+        return jsonify(response), 402
+    
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
