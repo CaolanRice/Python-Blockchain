@@ -15,8 +15,12 @@ CORS(app)
 
 
 @app.route('/', methods=['GET'])
-def get_ui():
+def get_node_ui():
     return send_from_directory('user_interface', 'blockchain_ui.html')
+
+@app.route('/network', methods=['GET'])
+def get_network_ui():
+    return send_from_directory('user_interface', 'network.html')
 
 @app.route('/wallet', methods=['POST'])
 def create_keys():
