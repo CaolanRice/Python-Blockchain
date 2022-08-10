@@ -23,6 +23,7 @@ class Blockchain:
         self.public_key = public_key
         self.__peer_node = set()
         self.node_id = node_id
+        self.resolve_conflicts = False
         self.load_data()
 
     #controlling access for reading and writing.
@@ -48,6 +49,36 @@ class Blockchain:
     #returns list of connected peer nodes
     def get_peer_nodes(self):
         return list(self.__peer_nodes)
+
+    def resolve(self):
+        longest_chain = self.chain
+        replace = False
+        for node in self.__peer_nodes:
+            url = 'http://{}/chain'.format(node)
+            try:
+                #returns an object
+                response = requests.get(url)
+                node_chain = response.json()
+                #list compp, create new block with block constructor. Going through node_chain list and extracting blocks and creating new list with block objects inside
+                node_chain = [Block(block['index'], block['previous_hash'], [Transaction(
+                    tx['sender'], tx['recipient'], tx['signature'], tx['amount']) 
+                    for tx in block['transactions']], block['proof'], block['timestamp'])for block in node_chain]
+                # node_chain.transactions = [Transaction(tx['sender'], tx['recipient'], tx['signature'], tx['amount']) for tx in node_chain['transactions']]
+                node_chain_length = len(node_chain)
+                local_chain_length = len(longest_chain)
+                #after this loop, only the longest chain should be kept
+                if node_chain_length > local_chain_length and Verification.verify_blockchain(node_chain):
+                    longest_chain = node_chain
+                    replace = True
+            except requests.exceptions.ConnectionError:
+                continue
+        self.resolve_conflicts = False
+        self.chain = longest_chain
+        if replace:
+            self.__open_transactions = []
+        self.save_data()
+        return replace
+                
 
     def add_block(self, block):
         #validate block then store it
@@ -235,7 +266,8 @@ class Blockchain:
                 response = requests.post(url, json={'block': converted_block})
                 if response.status_code == 400 or response.status_code == 500:
                         print('Block declined')
-                        return False
+                if response.status_code == 400:
+                    self.resolve_conflicts = True
             except requests.exceptions.ConnectionError:
                 continue
         return block

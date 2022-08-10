@@ -1,6 +1,4 @@
-from itertools import chain
 import json
-from operator import index
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
  
@@ -53,9 +51,21 @@ def load_keys():
             'message': 'Failed to load keys'
         }
         return jsonify(response), 500
+@app.route('/resolve', methods=['POST'])
+def resolve_conflicts():
+    replaced = blockchain.resolve()
+    if replaced:
+        response = {'The chain was replaced'}
+    else:
+        response = {'No chains were replaced'}
+    #status code is 200 because both cases are success cases
+    return jsonify(response), 200
 
 @app.route('/mine', methods=['POST'])
 def mine_block():
+    if blockchain.resolve_conflicts:
+        response = {'message': 'Resolve conflicts, first block has not been added'}
+        return jsonify(response), 409
     block = blockchain.mine_block()
     #block and transactions use block OBJECT so must be converted to dict in order to jsonify
     if block!= None:
@@ -248,12 +258,14 @@ def broadcast_block():
             return jsonify(response), 200
         else:
             response = {'message': 'Blockchain error'}
-            return jsonify(response), 500
+            return jsonify(response), 409
     elif block['index'] > blockchain.chain[-1 ].index:
-        pass
+        response = {'message': 'Some blockchain data doesn\'t seem to match'}
+        blockchain.resolve_conflicts = True
+        return jsonify(response), 200
     else:
         response = {'message': 'Some blockchain data missing, a block might not have been added'}
-        return jsonify(response), 402
+        return jsonify(response), 409
     
 
 if __name__ == '__main__':
